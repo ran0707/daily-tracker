@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/daily-tracker/static/css/main.e6c13ad2.css",
+    "main.js": "/daily-tracker/static/js/main.372702c9.js",
+    "static/js/453.e1a00177.chunk.js": "/daily-tracker/static/js/453.e1a00177.chunk.js",
+    "index.html": "/daily-tracker/index.html",
+    "main.e6c13ad2.css.map": "/daily-tracker/static/css/main.e6c13ad2.css.map",
+    "main.372702c9.js.map": "/daily-tracker/static/js/main.372702c9.js.map",
+    "453.e1a00177.chunk.js.map": "/daily-tracker/static/js/453.e1a00177.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.372702c9.js"
+  ]
+}
