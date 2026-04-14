@@ -4,6 +4,7 @@ const TABS = [
   { id: "dashboard", icon: "⊞", label: "Dashboard" },
   { id: "personal", icon: "◎", label: "Personal" },
   { id: "finance", icon: "◈", label: "Finance" },
+  { id: "anger", icon: "🧘", label: "Anger" },
   { id: "profile", icon: "◍", label: "Profile" },
 ];
 

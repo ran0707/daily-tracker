@@ -5,6 +5,7 @@ import BottomNav from "./components/BottomNav";
 import Dashboard from "./pages/Dashboard";
 import PersonalTrack from "./pages/PersonalTrack";
 import FinancialTrack from "./pages/FinancialTrack";
+import AngerManagement from "./pages/AngerManagement";
 import Profile from "./pages/Profile";
 
 function AppInner() {
@@ -31,6 +32,7 @@ function AppInner() {
         {page === "dashboard" && <Dashboard setPage={setPage} />}
         {page === "personal" && <PersonalTrack />}
         {page === "finance" && <FinancialTrack />}
+        {page === "anger" && <AngerManagement />}
         {page === "profile" && <Profile onLock={() => setUnlocked(false)} />}
       </div>
       <BottomNav page={page} setPage={setPage} />
