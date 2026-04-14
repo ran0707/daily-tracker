@@ -9,11 +9,12 @@ async function sha256(msg) {
     .join("");
 }
 const PIN_KEY = "app_pin_hash";
+const API_KEY_STORAGE = "groq_api_key";
 
 export default function Profile({ onLock }) {
   const { t, mode, setTheme } = useTheme();
   const [apiKey, setApiKey] = useState(
-    localStorage.getItem("API_KEY_PLACEHOLDER") || "",
+    localStorage.getItem(API_KEY_STORAGE) || "",
   );
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
@@ -24,7 +25,7 @@ export default function Profile({ onLock }) {
   const [pinMsg, setPinMsg] = useState("");
 
   async function saveKey() {
-    localStorage.setItem("API_KEY_PLACEHOLDER", apiKey.trim());
+    localStorage.setItem(API_KEY_STORAGE, apiKey.trim());
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 2000);
   }
