@@ -1,23 +1,85 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../lib/ThemeContext";
 
-// Anger detection keywords and their weights
+// Enhanced Anger detection with categorized Tanglish words
+// Categories: ANGER, VULGARITY, HARSH, HYPER, OFFENSIVE
 const ANGER_PATTERNS = {
-  rage: {
-    words: ["hate", "kill", "destroy", "smash", "explode", "furious", "enraged", "livid"],
+  // ANGER - Expressions of anger and rage
+  anger: {
+    english: [
+      "hate", "kill", "destroy", "smash", "explode", "furious", "enraged", "livid",
+      "pissed", "mad", "angry", "infuriated", "seething", "furious", "raging",
+    ],
+    tanglish: [
+      "neruppu", "adippan", "pattai", "vara", "sollrai", "thadi", "pidi", "aeri",
+      "solli", "vachka", "sappu", "kothei", "parakram", "pozhappu", "moham",
+      "koopam", "kuthumbram", "neruppu_potu", "surakkai", "udal_pozhappu",
+    ],
     weight: 3,
   },
-  frustration: {
-    words: ["stupid", "idiot", "useless", "pathetic", "disgusting", "awful", "terrible"],
+
+  // VULGARITY - Abusive and vulgar language
+  vulgarity: {
+    english: [
+      "damn", "hell", "crap", "shit", "fuck", "asshole", "bastard", "bitch",
+      "piss", "bloody", "goddamn",
+    ],
+    tanglish: [
+      "soothukali", "aambulai", "thaevalai", "kudaa", "kuppai", "payyi", "thadi_payyi",
+      "paakanam", "pakkadumba", "kottai", "saadha", "payya_kottai", "thozha_payyi",
+      "vaanam_illai", "kuppu", "kuppai_kattiya",
+    ],
+    weight: 3.5,
+  },
+
+  // HARSH - Harsh and critical words
+  harsh: {
+    english: [
+      "stupid", "idiot", "useless", "pathetic", "disgusting", "awful", "terrible",
+      "horrible", "worthless", "loser", "dumb", "moron", "imbecile", "fool",
+      "incompetent", "embarrassing", "pathetic",
+    ],
+    tanglish: [
+      "aiyyoh", "madi", "vali", "poy", "poidum", "paavam", "mayakam", "thaviram",
+      "mokkai", "kutha", "parakram", "kudaara", "kaattukari", "kettavan", "kettavai",
+      "soothran", "kopuram", "kaakkai_kozhaam", "nesu", "aasai_vedikkai",
+    ],
     weight: 2.5,
   },
-  disappointment: {
-    words: ["disappointed", "upset", "annoyed", "irritated", "bothered", "agitated"],
-    weight: 1.5,
+
+  // HYPER - Hyperactive/over-excited aggressive language
+  hyper: {
+    english: [
+      "literally", "omg", "wtf", "omfg", "seriously", "unbelievable", "insane",
+      "crazy", "out of control", "losing it", "flipping out", "freaking out",
+    ],
+    tanglish: [
+      "vera_azhuthu", "solraai", "verum_alavukku", "ivar_arasura", "kai_vithukka",
+      "sollai_paavai", "vandha_kari", "pandravum", "pozhappu_katte", "kanna_kili",
+      "kayya_vittukka", "udal_pozhappu_katte",
+    ],
+    weight: 2,
   },
-  caps: { pattern: /[A-Z]{4,}/g, weight: 2 }, // Multiple consecutive caps
-  exclamation: { pattern: /!{2,}/g, weight: 1.5 }, // Multiple exclamation marks
-  question: { pattern: /\?{2,}/g, weight: 1.5 }, // Multiple question marks
+
+  // OFFENSIVE - Personally offensive/insulting language
+  offensive: {
+    english: [
+      "insult", "disrespect", "trash", "scum", "filth", "disgusting", "lowlife",
+      "degenerate", "vile", "contemptible", "spineless", "coward", "weakling",
+    ],
+    tanglish: [
+      "kadi", "kupiduvaan", "niraindha", "kupiyai", "parupu", "mukkam", "aagasam",
+      "panni", "ponai", "saavadhanai", "thollai", "kaakkai", "aasai_vedikkai",
+      "therikku_kudi", "nesukkili", "tholkai_kari",
+    ],
+    weight: 2.8,
+  },
+
+  // Pattern-based detection
+  caps: { pattern: /[A-Z]{4,}/g, weight: 1.5 }, // Multiple consecutive caps
+  exclamation: { pattern: /!{2,}/g, weight: 1.2 }, // Multiple exclamation marks
+  question: { pattern: /\?{2,}/g, weight: 1.2 }, // Multiple question marks
+  repeated_chars: { pattern: /([a-z])\1{2,}/g, weight: 1.3 }, // aaa, bbb, etc
 };
 
 const CALMING_RESPONSES = {
@@ -27,6 +89,9 @@ const CALMING_RESPONSES = {
     "This feeling is temporary. In an hour, this will matter much less.",
     "Walk away. Physical distance creates mental clarity. Move your body.",
     "What would your wisest self say to you right now? Listen to that voice.",
+    "🇮🇳 Kudi vandha paavam mudi vidra... Athe karuthu. Karuthu kaale vendum.",
+    "Neruppu atrukku naan aattai ilai. Nee aattai, nee uruvam.",
+    "Shanthi adhikaar. Porvai aatkal. Kai kulukai.",
   ],
   medium: [
     "🌊 Feel the emotion without acting on it. Let it flow through you like water.",
@@ -34,6 +99,9 @@ const CALMING_RESPONSES = {
     "Your feelings are important. Express them without hurting others.",
     "Pause. Before you speak, ask: Will this bring me closer to peace?",
     "Channel this energy into something constructive—create, move, write.",
+    "Aiyyoh... Innum paavam ilai. Kai kulukai, moha pattu.",
+    "Vera maatama... Samayam ullamadi. Nee nallavan.",
+    "Madi vara vendaadhum. Paavam vittupa, shanthi vangura.",
   ],
   low: [
     "💚 You're handling this well. Keep this calm awareness.",
@@ -41,6 +109,9 @@ const CALMING_RESPONSES = {
     "Your mindfulness is protecting both you and those around you.",
     "Keep riding this wave of peace. Protect this state.",
     "You're in control. This clarity is your superpower.",
+    "🧘 Nallaa irukka... Inta shanthi vaisanam vittupa.",
+    "Kai kulukai nalla irukku. Inta samadhanai pidithu kolu.",
+    "Nee sutrum ayyan. Inta anbu, inta shanthi - piditta kolu.",
   ],
 };
 
@@ -50,12 +121,14 @@ function calculateAngerLevel(text) {
   let score = 0;
   const lowerText = text.toLowerCase();
 
-  // Check keywords
-  Object.values(ANGER_PATTERNS).forEach((pattern) => {
-    if (pattern.words) {
-      pattern.words.forEach((word) => {
-        const count = (lowerText.match(new RegExp(`\\b${word}\\b`, "gi")) || [])
-          .length;
+  // Check categorized keywords (both English and Tanglish)
+  Object.entries(ANGER_PATTERNS).forEach(([category, pattern]) => {
+    if (pattern.english || pattern.tanglish) {
+      const words = [...(pattern.english || []), ...(pattern.tanglish || [])];
+      words.forEach((word) => {
+        // Match whole words or word variations
+        const regex = new RegExp(`\\b${word}\\b|${word}`, "gi");
+        const count = (lowerText.match(regex) || []).length;
         score += count * pattern.weight;
       });
     }
@@ -66,12 +139,17 @@ function calculateAngerLevel(text) {
   score += capsMatches.length * ANGER_PATTERNS.caps.weight;
 
   // Check exclamation marks
-  const exclamationMatches = text.match(ANGER_PATTERNS.exclamation.pattern) || [];
+  const exclamationMatches =
+    text.match(ANGER_PATTERNS.exclamation.pattern) || [];
   score += exclamationMatches.length * ANGER_PATTERNS.exclamation.weight;
 
   // Check question marks
   const questionMatches = text.match(ANGER_PATTERNS.question.pattern) || [];
   score += questionMatches.length * ANGER_PATTERNS.question.weight;
+
+  // Check repeated characters (aaa, bbb, rrr)
+  const repeatedMatches = text.match(ANGER_PATTERNS.repeated_chars.pattern) || [];
+  score += repeatedMatches.length * ANGER_PATTERNS.repeated_chars.weight;
 
   // Text length factor (longer rants = higher anger)
   const wordCount = text.trim().split(/\s+/).length;
@@ -80,7 +158,7 @@ function calculateAngerLevel(text) {
   }
 
   // Normalize to 0-10 scale
-  const angerLevel = Math.min(Math.max(score / 2, 0), 10);
+  const angerLevel = Math.min(Math.max(score / 2.5, 0), 10);
   return Math.round(angerLevel * 10) / 10;
 }
 
@@ -124,10 +202,38 @@ function getAngerColors(level) {
   };
 }
 
+function detectAngerTypes(text) {
+  const lowerText = text.toLowerCase();
+  const detected = [];
+
+  if (Object.entries(ANGER_PATTERNS.anger).some(([key, arr]) => 
+    arr && arr.some(word => lowerText.includes(word))
+  )) detected.push("Anger");
+
+  if (Object.entries(ANGER_PATTERNS.vulgarity).some(([key, arr]) => 
+    arr && arr.some(word => lowerText.includes(word))
+  )) detected.push("Vulgarity");
+
+  if (Object.entries(ANGER_PATTERNS.harsh).some(([key, arr]) => 
+    arr && arr.some(word => lowerText.includes(word))
+  )) detected.push("Harsh");
+
+  if (Object.entries(ANGER_PATTERNS.hyper).some(([key, arr]) => 
+    arr && arr.some(word => lowerText.includes(word))
+  )) detected.push("Hyper");
+
+  if (Object.entries(ANGER_PATTERNS.offensive).some(([key, arr]) => 
+    arr && arr.some(word => lowerText.includes(word))
+  )) detected.push("Offensive");
+
+  return detected;
+}
+
 export default function AngerManagement() {
   const { t } = useTheme();
   const [message, setMessage] = useState("");
   const [angerLevel, setAngerLevel] = useState(0);
+  const [angerTypes, setAngerTypes] = useState([]);
   const [response, setResponse] = useState("");
   const [history, setHistory] = useState([]);
   const inputRef = useRef(null);
@@ -148,11 +254,14 @@ export default function AngerManagement() {
     if (!message.trim()) return;
 
     const level = calculateAngerLevel(message);
+    const types = detectAngerTypes(message);
     setAngerLevel(level);
+    setAngerTypes(types);
 
     const cat = getAngerCategory(level);
     const responses = CALMING_RESPONSES[cat];
-    const selectedResponse = responses[Math.floor(Math.random() * responses.length)];
+    const selectedResponse =
+      responses[Math.floor(Math.random() * responses.length)];
     setResponse(selectedResponse);
 
     setHistory((prev) => [
@@ -160,6 +269,7 @@ export default function AngerManagement() {
       {
         message: message.trim(),
         level,
+        types,
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -179,7 +289,9 @@ export default function AngerManagement() {
 
   const avgAnger =
     history.length > 0
-      ? (history.reduce((sum, h) => sum + h.level, 0) / history.length).toFixed(1)
+      ? (history.reduce((sum, h) => sum + h.level, 0) / history.length).toFixed(
+          1,
+        )
       : 0;
 
   return (
@@ -228,7 +340,13 @@ export default function AngerManagement() {
           }}
         >
           <span style={{ fontSize: "24px" }}>{angerColors.indicator}</span>
-          <span style={{ fontSize: "20px", fontWeight: "600", color: angerColors.accent }}>
+          <span
+            style={{
+              fontSize: "20px",
+              fontWeight: "600",
+              color: angerColors.accent,
+            }}
+          >
             Anger Level: {angerLevel}/10
           </span>
         </div>
@@ -249,6 +367,38 @@ export default function AngerManagement() {
             }}
           />
         </div>
+
+        {/* Anger Type Tags */}
+        {angerTypes.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+              marginTop: "12px",
+              paddingTop: "12px",
+              borderTop: `1px solid ${angerColors.border}`,
+            }}
+          >
+            {angerTypes.map((type) => (
+              <div
+                key={type}
+                style={{
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                  background: angerColors.accent,
+                  color: "#fff",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {type}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Chat Input */}
@@ -352,12 +502,16 @@ export default function AngerManagement() {
             <div>
               <span style={{ color: t.textMuted }}>Total Vents:</span>
               <br />
-              <span style={{ color: t.accent, fontWeight: "600" }}>{history.length}</span>
+              <span style={{ color: t.accent, fontWeight: "600" }}>
+                {history.length}
+              </span>
             </div>
             <div>
               <span style={{ color: t.textMuted }}>Average Anger:</span>
               <br />
-              <span style={{ color: t.accent, fontWeight: "600" }}>{avgAnger}/10</span>
+              <span style={{ color: t.accent, fontWeight: "600" }}>
+                {avgAnger}/10
+              </span>
             </div>
           </div>
         </div>
@@ -417,8 +571,41 @@ export default function AngerManagement() {
                     <span style={{ color: colors.accent, fontWeight: "600" }}>
                       {entry.level}/10
                     </span>
-                    <span style={{ color: t.textMuted }}>{entry.timestamp}</span>
+                    <span style={{ color: t.textMuted }}>
+                      {entry.timestamp}
+                    </span>
                   </div>
+
+                  {/* Anger Type Tags in History */}
+                  {entry.types && entry.types.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "4px",
+                        flexWrap: "wrap",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      {entry.types.map((type) => (
+                        <div
+                          key={type}
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: "600",
+                            padding: "2px 6px",
+                            borderRadius: "12px",
+                            background: colors.accent,
+                            color: "#fff",
+                            textTransform: "uppercase",
+                            opacity: 0.8,
+                          }}
+                        >
+                          {type}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <p
                     style={{
                       color: t.textSecond,
